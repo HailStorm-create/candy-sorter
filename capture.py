@@ -14,20 +14,32 @@ CAM_INDEX = 0  # USB webcam (1 is the laptop's built-in one)
 OUT_DIR = Path(__file__).with_name("photos")
 
 
-def grab():
+def open_camera():
+    """Open the webcam and let it warm up. Keep it open to take many photos fast (pass it to grab)."""
     cap = cv2.VideoCapture(CAM_INDEX, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))  # needed for 1080p over USB
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    # first frames are black / still auto-exposing: keep reading for ~2 s
+    t0 = time.time()
+    while time.time() - t0 < 2:
+        cap.read()
+    return cap
+
+
+def grab(cap=None):
+    own = cap is None
+    if own:
+        cap = open_camera()
     try:
-        # first frames are black / still auto-exposing: keep reading for ~2 s, keep the last one
-        frame, t0 = None, time.time()
-        while time.time() - t0 < 2:
+        frame = None
+        for _ in range(5):  # skip frames buffered while the arm was moving: keep the newest
             ok, f = cap.read()
             if ok:
                 frame = f
     finally:
-        cap.release()
+        if own:
+            cap.release()
     if frame is None or frame.mean() < 5:
         raise SystemExit("No picture. Is another app using the webcam?")
     return frame
