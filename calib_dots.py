@@ -1,10 +1,3 @@
-"""The arm marks its own calibration grid for the camera.
-
-    python calib_dots.py
-
-It hovers the closed jaw tips 0.5 cm above 6 points. At each one, put a small dark pen dot on the desk
-right under the tips, then press ENTER. At the end it parks at 'up', takes photos/calib_dots.jpg, and goes to rest.
-"""
 import json
 import logging
 import time
@@ -17,7 +10,7 @@ from ik import ik, to_servo
 from pixel_to_arm import DOTS
 from so101_connect import connect
 
-HAND = {"wrist_roll.pos": 0.0, "gripper.pos": 5.0}  # same as point_test.py: roll 0, gripper closed
+HAND = {"wrist_roll.pos": 0.0, "gripper.pos": 5.0}
 HZ = 50
 
 poses = json.loads(Path(__file__).with_name("poses.json").read_text())
@@ -53,7 +46,7 @@ try:
         go(at(x, y, 0.5), 1.0)
         input(f"dot {i} of {len(DOTS)} at ({x}, {y}): mark the desk under the jaw tips, then ENTER ")
         go(at(x, y, 4.0), 1.0)
-    go(poses["up"])  # park out of the camera's way
+    go(poses["up"])
     OUT_DIR.mkdir(exist_ok=True)
     cv2.imwrite(str(OUT_DIR / "calib_dots.jpg"), grab())
     print("Saved photos/calib_dots.jpg")

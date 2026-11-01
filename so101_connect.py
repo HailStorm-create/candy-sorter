@@ -18,7 +18,7 @@ def connect(max_relative_target: float | None = 10.0, p_gain: int = 16) -> SO101
         try:
             robot.connect(calibrate=False)
             return robot
-        except (ConnectionError, RuntimeError) as e:  # RuntimeError: e.g. a servo's brief "Input voltage error"
+        except (ConnectionError, RuntimeError) as e:
             print(f"Connect attempt {attempt + 1} failed: {e}")
             if robot.bus.is_connected:
                 robot.bus.disconnect(disable_torque=False)
