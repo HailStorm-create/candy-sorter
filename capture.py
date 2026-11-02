@@ -1,4 +1,5 @@
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,53 @@ def open_camera():
     while time.time() - t0 < 2:
         cap.read()
     return cap
+
+
+class Recorder(threading.Thread):
+    def __init__(self, cam, path):
+        super().__init__(daemon=True)
+        self.cam, self.path = cam, path
+        t0, n, frame = time.time(), 0, None
+        while time.time() - t0 < 1:
+            ok, f = cam.read()
+            if ok:
+                n, frame = n + 1, f
+        h, w = frame.shape[:2]
+        fourcc, fps = cv2.VideoWriter_fourcc(*"MJPG"), max(n, 5)
+        self.path = path.with_suffix(".avi")
+        self.writer = cv2.VideoWriter(str(self.path), fourcc, fps, (w, h))
+        self.raw = cv2.VideoWriter(str(path.with_name(path.stem + "_raw.avi")), fourcc, fps, (w, h))
+        self.latest = frame
+        self.marks, self.status = [], ""
+        self.running = True
+
+    def run(self):
+        while self.running:
+            ok, f = self.cam.read()
+            if ok:
+                self.latest = f
+                self.raw.write(f)
+                self.writer.write(self.annotate(f.copy()))
+
+    def annotate(self, img):
+        for (bx, by, bw, bh), text, color in list(self.marks):
+            cv2.rectangle(img, (bx, by), (bx + bw, by + bh), color, 4)
+            cv2.putText(img, text, (bx, by - 10), 0, 1.0, color, 3)
+        if self.status:
+            cv2.putText(img, self.status, (24, 60), 0, 1.6, (255, 255, 255), 8)
+            cv2.putText(img, self.status, (24, 60), 0, 1.6, (30, 30, 30), 3)
+        return img
+
+    def frame(self, settle=0.5):
+        time.sleep(settle)
+        return self.latest.copy()
+
+    def stop(self):
+        if self.running:
+            self.running = False
+            self.join()
+            self.writer.release()
+            self.raw.release()
 
 
 def grab(cap=None):
